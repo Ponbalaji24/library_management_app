@@ -27,7 +27,17 @@ if not DATABASE_URL or "[YOUR-PASSWORD]" in DATABASE_URL or "[password]" in DATA
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-engine = create_engine(DATABASE_URL)
+try:
+    # Try creating the engine and verifying connection
+    engine = create_engine(DATABASE_URL)
+    with engine.connect() as conn:
+        pass
+    print("[INFO] Successfully connected to database.")
+except Exception as e:
+    print(f"[WARNING] Database connection failed ({e}). Falling back to local SQLite database.")
+    DATABASE_URL = "sqlite:///./local_library.db"
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

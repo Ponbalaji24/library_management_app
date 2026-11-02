@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import models
 import schemas
@@ -29,6 +30,21 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# CORS — allow Netlify frontend (and local dev) to call this API
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
+allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Serve static files from the static directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ==========================================
 # AUTHENTICATION ENDPOINTS
@@ -273,4 +289,4 @@ async def get_dashboard_stats(db: Session = Depends(get_db), current_member: mod
 
 @app.get("/")
 def home():
-    return {"message": "API is working"}
+    return FileResponse("static/index.html")
