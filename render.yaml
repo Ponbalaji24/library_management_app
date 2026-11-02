@@ -6,6 +6,10 @@ services:
     startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: DATABASE_URL
-        sync: false   # You will paste the value in Render dashboard
+        sync: false   # Paste your Supabase connection string in Render dashboard
       - key: SECRET_KEY
         generateValue: true   # Render auto-generates a secure secret
+      - key: RENDER
+        value: "true"   # Enables production mode in database.py
+      - key: ALLOWED_ORIGINS
+        value: "*"   # Update to your frontend URL once deployed
