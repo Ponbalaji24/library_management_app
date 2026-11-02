@@ -30,7 +30,7 @@ elif DATABASE_URL.startswith("postgresql://"):
 # If it already has +psycopg2 leave it alone
 
 # ── Create engine ─────────────────────────────────────────────────────────────
-IS_PRODUCTION = bool(os.getenv("RENDER") or os.getenv("RAILWAY_ENVIRONMENT"))
+IS_PRODUCTION = bool(os.getenv("RENDER") or os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("FLY_APP_NAME"))
 
 if IS_PRODUCTION:
     # Production: must connect to PostgreSQL — crash loudly on failure
