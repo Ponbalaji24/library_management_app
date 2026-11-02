@@ -43,24 +43,37 @@ SAMPLE_BOOKS = [
 
 SAMPLE_MEMBERS = [
     {
-        "name": "John Doe",
+        "name": "System Administrator",
+        "email": "admin@library.com",
+        "membership_date": date(2026, 1, 1),
+        "role": "admin",
+        "password": "adminpassword123",
+    },
+    {
+        "name": "John Doe (Admin)",
         "email": "john.doe@example.com",
         "membership_date": date(2026, 1, 15),
+        "role": "admin",
+        "password": "password123",
     },
     {
-        "name": "Jane Smith",
+        "name": "Jane Smith (User)",
         "email": "jane.smith@example.com",
         "membership_date": date(2026, 2, 20),
+        "role": "user",
+        "password": "password123",
     },
     {
-        "name": "Alice Johnson",
+        "name": "Alice Johnson (User)",
         "email": "alice.j@example.com",
         "membership_date": date(2026, 3, 10),
+        "role": "user",
+        "password": "password123",
     }
 ]
 
 def seed_database(db: Session):
-    # Seed books
+    # Seed books if empty
     book_count = db.query(models.Book).count()
     if book_count == 0:
         print("Seeding books...")
@@ -69,13 +82,19 @@ def seed_database(db: Session):
             db.add(book)
         db.commit()
 
-    # Seed members
-    member_count = db.query(models.Member).count()
-    if member_count == 0:
-        print("Seeding members...")
-        for member_data in SAMPLE_MEMBERS:
-            data = member_data.copy()
-            data["hashed_password"] = hash_password("password123")
-            member = models.Member(**data)
+    # Ensure admin user exists and existing users have proper roles
+    for member_data in SAMPLE_MEMBERS:
+        existing = db.query(models.Member).filter(models.Member.email == member_data["email"]).first()
+        if not existing:
+            member = models.Member(
+                name=member_data["name"],
+                email=member_data["email"],
+                hashed_password=hash_password(member_data["password"]),
+                membership_date=member_data["membership_date"],
+                role=member_data["role"],
+            )
             db.add(member)
-        db.commit()
+        else:
+            if existing.role != member_data["role"]:
+                existing.role = member_data["role"]
+    db.commit()

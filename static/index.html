@@ -3,12 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aetheria Library Management</title>
+    <title>Aetheria Library — Reader Portal</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .portal-switch-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-glass);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .portal-switch-btn:hover {
+            background: rgba(255, 255, 255, 0.16);
+            color: #fff;
+        }
+        .borrow-now-btn {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .borrow-now-btn:hover {
+            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            transform: translateY(-1px);
+        }
+        .borrow-now-btn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.6;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -24,38 +64,20 @@
                 <h2>Aetheria</h2>
             </div>
             <nav class="nav-menu">
-                <a href="#" class="nav-item active" data-tab="dashboard">
-                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
-                        <rect x="3" y="3" width="7" height="9"></rect>
-                        <rect x="14" y="3" width="7" height="5"></rect>
-                        <rect x="14" y="12" width="7" height="9"></rect>
-                        <rect x="3" y="16" width="7" height="5"></rect>
-                    </svg>
-                    <span>Dashboard</span>
-                </a>
-                <a href="#" class="nav-item" data-tab="books">
+                <a href="#" class="nav-item active" data-tab="catalog">
                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
                         <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
                         <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
                     </svg>
-                    <span>Books</span>
+                    <span>Browse Catalog</span>
                 </a>
-                <a href="#" class="nav-item" data-tab="members">
-                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    <span>Members</span>
-                </a>
-                <a href="#" class="nav-item" data-tab="transactions">
+                <a href="#" class="nav-item" data-tab="my-books">
                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
                         <polyline points="23 4 23 10 17 10"></polyline>
                         <polyline points="1 20 1 14 7 14"></polyline>
                         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                     </svg>
-                    <span>Transactions</span>
+                    <span>My Borrowed Books</span>
                 </a>
             </nav>
             <div class="sidebar-footer">
@@ -63,18 +85,25 @@
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <div class="avatar" id="user-avatar" style="width: 32px; height: 32px; font-size: 13px;">U</div>
                         <div style="display: flex; flex-direction: column; overflow: hidden;">
-                            <span id="user-name" style="font-size: 13px; font-weight: 600; color: white; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">User</span>
-                            <span id="user-email" style="font-size: 11px; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">Email</span>
+                            <span id="user-name" style="font-size: 13px; font-weight: 600; color: white;">Member</span>
+                            <span id="user-email" style="font-size: 11px; color: var(--text-muted);">user@example.com</span>
                         </div>
                     </div>
                 </div>
                 <div class="sidebar-actions" style="margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
+                    <a href="/admin" class="portal-switch-btn">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <span>Administrator Portal</span>
+                    </a>
                     <button class="btn btn-secondary btn-full btn-sm" id="change-password-trigger" style="font-size: 12px; padding: 6px 12px;">Change Password</button>
                     <button class="btn btn-danger btn-full btn-sm" id="logout-btn" style="font-size: 12px; padding: 6px 12px;">Log Out</button>
                 </div>
                 <div class="status-indicator">
                     <span class="dot online"></span>
-                    <span>System Connected</span>
+                    <span>Library Online</span>
                 </div>
             </div>
         </aside>
@@ -83,229 +112,47 @@
         <main class="main-content">
             <header class="top-bar">
                 <div class="search-container">
-                    <h1 id="page-title">Dashboard</h1>
+                    <h1 id="page-title">Library Book Catalog</h1>
                 </div>
                 <div class="user-profile">
-                    <div class="avatar">L</div>
-                    <span>Librarian Admin</span>
+                    <div class="avatar" id="top-avatar">U</div>
+                    <span id="top-username">Reader</span>
                 </div>
             </header>
 
-            <!-- Notification Toast -->
+            <!-- Toast -->
             <div id="toast" class="toast hidden"></div>
 
-            <!-- Dashboard View -->
-            <section id="dashboard" class="tab-pane active">
-                <div class="stats-grid">
-                    <div class="stats-card">
-                        <div class="stats-icon purple">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
-                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                            </svg>
-                        </div>
-                        <div class="stats-info">
-                            <h3>Total Books</h3>
-                            <p id="stat-total-books">-</p>
-                        </div>
-                    </div>
-                    <div class="stats-card">
-                        <div class="stats-icon blue">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9" cy="7" r="4"></circle>
-                            </svg>
-                        </div>
-                        <div class="stats-info">
-                            <h3>Total Members</h3>
-                            <p id="stat-total-members">-</p>
-                        </div>
-                    </div>
-                    <div class="stats-card">
-                        <div class="stats-icon orange">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
-                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                            </svg>
-                        </div>
-                        <div class="stats-info">
-                            <h3>Active Borrows</h3>
-                            <p id="stat-active-borrows">-</p>
-                        </div>
-                    </div>
-                    <div class="stats-card">
-                        <div class="stats-icon green">
-                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                        </div>
-                        <div class="stats-info">
-                            <h3>Available Copies</h3>
-                            <p id="stat-available-copies">-</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="dashboard-sections">
-                    <div class="dashboard-card action-card">
-                        <h2>Quick Borrow</h2>
-                        <form id="quick-borrow-form" class="dashboard-form">
-                            <div class="form-group">
-                                <label for="borrow-member">Select Member</label>
-                                <select id="borrow-member" required>
-                                    <option value="" disabled selected>Select library member...</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="borrow-book">Select Book</label>
-                                <select id="borrow-book" required>
-                                    <option value="" disabled selected>Select available book...</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-full">Process Borrowing</button>
-                        </form>
-                    </div>
-
-                    <div class="dashboard-card list-card">
-                        <h2>Active Transactions</h2>
-                        <div class="list-wrapper">
-                            <ul id="active-borrows-list" class="activity-list">
-                                <!-- Loaded dynamically -->
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Books View -->
-            <section id="books" class="tab-pane">
-                <div class="section-actions">
-                    <button class="btn btn-primary toggle-form-btn" onclick="toggleForm('add-book-section')">
-                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="margin-right: 8px;">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                        Add New Book
-                    </button>
-                </div>
-
-                <div id="add-book-section" class="form-section hidden-anim">
-                    <form id="add-book-form" class="glass-form">
-                        <h3>New Book Details</h3>
-                        <div class="form-row">
-                            <div class="form-group col-6">
-                                <label for="book-title">Title</label>
-                                <input type="text" id="book-title" required placeholder="e.g. The Lord of the Rings">
-                            </div>
-                            <div class="form-group col-6">
-                                <label for="book-author">Author</label>
-                                <input type="text" id="book-author" required placeholder="e.g. J.R.R. Tolkien">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group col-4">
-                                <label for="book-isbn">ISBN</label>
-                                <input type="text" id="book-isbn" required placeholder="e.g. 9780261102217">
-                            </div>
-                            <div class="form-group col-4">
-                                <label for="book-year">Published Year</label>
-                                <input type="number" id="book-year" required placeholder="e.g. 1954">
-                            </div>
-                            <div class="form-group col-4">
-                                <label for="book-copies">Copies Available</label>
-                                <input type="number" id="book-copies" required min="1" placeholder="e.g. 5">
-                            </div>
-                        </div>
-                        <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" onclick="toggleForm('add-book-section')">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Book</button>
-                        </div>
-                    </form>
+            <!-- 1. Catalog View (Browse & Borrow) -->
+            <section id="catalog" class="tab-pane active">
+                <div style="margin-bottom: 24px; display: flex; gap: 12px; align-items: center;">
+                    <input type="text" id="book-search-input" placeholder="🔍 Search by title, author, or ISBN..." style="flex: 1; padding: 12px 16px; background: rgba(255,255,255,0.06); border: 1px solid var(--border-glass); border-radius: 10px; color: white;">
                 </div>
 
                 <div class="books-grid-wrapper">
-                    <h2>Catalog Grid</h2>
+                    <h2>Available Books</h2>
                     <div id="books-grid" class="cards-grid">
                         <!-- Loaded dynamically -->
                     </div>
                 </div>
             </section>
 
-            <!-- Members View -->
-            <section id="members" class="tab-pane">
-                <div class="section-actions">
-                    <button class="btn btn-primary toggle-form-btn" onclick="toggleForm('add-member-section')">
-                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" style="margin-right: 8px;">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                        Register New Member
-                    </button>
-                </div>
-
-                <div id="add-member-section" class="form-section hidden-anim">
-                    <form id="add-member-form" class="glass-form">
-                        <h3>New Member Details</h3>
-                        <div class="form-row">
-                            <div class="form-group col-6">
-                                <label for="member-name">Name</label>
-                                <input type="text" id="member-name" required placeholder="Full Name">
-                            </div>
-                            <div class="form-group col-6">
-                                <label for="member-email">Email Address</label>
-                                <input type="email" id="member-email" required placeholder="email@example.com">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group col-6">
-                                <label for="member-password">Password</label>
-                                <input type="password" id="member-password" required placeholder="Initial Password">
-                            </div>
-                            <div class="form-group col-6">
-                                <label for="member-date">Membership Date</label>
-                                <input type="date" id="member-date" required>
-                            </div>
-                        </div>
-                        <div class="form-actions">
-                            <button type="button" class="btn btn-secondary" onclick="toggleForm('add-member-section')">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Register</button>
-                        </div>
-                    </form>
-                </div>
-
+            <!-- 2. My Borrowed Books View -->
+            <section id="my-books" class="tab-pane">
                 <div class="table-card">
+                    <h2 style="margin-bottom: 16px;">My Active & Past Loans</h2>
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Membership Date</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="members-table-body">
-                            <!-- Loaded dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Transactions View -->
-            <section id="transactions" class="tab-pane">
-                <div class="table-card">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Member Name</th>
                                 <th>Book Title</th>
+                                <th>Author</th>
                                 <th>Borrow Date</th>
                                 <th>Return Date</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody id="transactions-table-body">
+                        <tbody id="my-borrows-table-body">
                             <!-- Loaded dynamically -->
                         </tbody>
                     </table>
@@ -314,7 +161,7 @@
         </main>
     </div>
 
-    <!-- Change Password Modal -->
+    <!-- Password Modal -->
     <div id="password-modal" class="modal-overlay hidden">
         <div class="modal-card glass-form">
             <h3>Change Password</h3>
@@ -340,7 +187,7 @@
         <div class="auth-card glass-form">
             <div class="auth-header">
                 <h2>Aetheria Library</h2>
-                <p id="auth-subtitle">Sign in to access your library dashboard</p>
+                <p id="auth-subtitle">Sign in to borrow books and browse the collection</p>
             </div>
             
             <!-- Login Form -->
@@ -353,31 +200,30 @@
                     <label for="login-password">Password</label>
                     <input type="password" id="login-password" required placeholder="••••••••">
                 </div>
-                <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+                <button type="submit" class="btn btn-primary btn-full">Sign In to Library</button>
                 <p class="auth-toggle-text">Don't have an account? <a href="#" id="show-register-btn">Register here</a></p>
             </form>
             
-            <!-- Register Form (hidden) -->
+            <!-- Register Form -->
             <form id="register-form" class="hidden">
                 <div class="form-group">
                     <label for="register-name">Full Name</label>
-                    <input type="text" id="register-name" required placeholder="John Doe">
+                    <input type="text" id="register-name" required placeholder="Jane Smith">
                 </div>
                 <div class="form-group">
                     <label for="register-email">Email Address</label>
-                    <input type="email" id="register-email" required placeholder="john@example.com">
+                    <input type="email" id="register-email" required placeholder="jane.smith@example.com">
                 </div>
                 <div class="form-group">
-                    <label for="register-password">Password</label>
-                    <input type="password" id="register-password" required placeholder="Create a password">
+                    <label for="register-password">Create Password</label>
+                    <input type="password" id="register-password" required placeholder="Choose a secure password">
                 </div>
-                <button type="submit" class="btn btn-primary btn-full">Register Account</button>
+                <button type="submit" class="btn btn-primary btn-full">Create Free Account</button>
                 <p class="auth-toggle-text">Already registered? <a href="#" id="show-login-btn">Sign in here</a></p>
             </form>
         </div>
     </div>
 
-    <!-- JS script -->
     <script src="/static/app.js"></script>
 </body>
 </html>

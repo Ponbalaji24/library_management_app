@@ -25,6 +25,7 @@ class MemberBase(BaseModel):
     name: str
     email: EmailStr
     membership_date: date
+    role: Optional[str] = "user"
 
 class MemberCreate(MemberBase):
     password: str
@@ -41,9 +42,17 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class RegisterRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
+    role: str
+    name: str
+    email: str
 
 class PasswordChangeRequest(BaseModel):
     old_password: str
@@ -53,7 +62,7 @@ class PasswordChangeRequest(BaseModel):
 # Borrow Schemas
 class BorrowRequest(BaseModel):
     book_id: int
-    member_id: int
+    member_id: Optional[int] = None  # Optional: defaults to current user if member
 
 class BorrowRecordResponse(BaseModel):
     id: int
@@ -61,6 +70,8 @@ class BorrowRecordResponse(BaseModel):
     member_id: int
     borrow_date: date
     return_date: Optional[date] = None
+    book: Optional[BookResponse] = None
+    member: Optional[MemberResponse] = None
 
     class Config:
         from_attributes = True

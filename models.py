@@ -24,6 +24,7 @@ class Member(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     membership_date = Column(Date, nullable=False)
+    role = Column(String(50), nullable=False, default="user")  # "admin" or "user"
 
     # Relationships
     borrow_records = relationship("BorrowRecord", back_populates="member", cascade="all, delete-orphan")

@@ -1,22 +1,39 @@
 from datetime import date
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import text, func
+
 import models
 import schemas
 from database import engine, get_db, SessionLocal
 from seed import seed_database
-from auth import hash_password, verify_password, create_access_token, get_current_member
+from auth import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    get_current_member,
+    get_current_admin
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Create database tables automatically on startup if they do not exist
+    # 1. Create database tables automatically
     models.Base.metadata.create_all(bind=engine)
-    # 2. Seed default library data if the database is empty
+    
+    # 2. Add 'role' column if not exists (safe PostgreSQL migration)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE members ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user';"))
+            conn.commit()
+    except Exception as e:
+        print(f"[INFO] Column migration notice: {e}")
+
+    # 3. Seed default admin and initial library data
     db = SessionLocal()
     try:
         seed_database(db)
@@ -26,12 +43,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Library Management System API",
-    description="A RESTful API for managing books, library members, and borrowing transactions.",
-    version="1.0.0",
+    description="A RESTful API for managing books, library members, and borrowing transactions with Role-Based Access.",
+    version="1.1.0",
     lifespan=lifespan
 )
 
-# CORS — allow Netlify frontend (and local dev) to call this API
+# CORS configuration
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
 allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
@@ -43,8 +60,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files from the static directory
+# Serve static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 # ==========================================
 # AUTHENTICATION ENDPOINTS
@@ -55,8 +73,53 @@ async def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
     member = db.query(models.Member).filter(models.Member.email == req.email).first()
     if not member or not verify_password(req.password, member.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    
     access_token = create_access_token(data={"sub": member.email})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": member.role or "user",
+        "name": member.name,
+        "email": member.email,
+    }
+
+
+@app.post("/api/auth/register", response_model=schemas.TokenResponse, status_code=201, tags=["Authentication"])
+async def register(req: schemas.RegisterRequest, db: Session = Depends(get_db)):
+    existing = db.query(models.Member).filter(models.Member.email == req.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    new_member = models.Member(
+        name=req.name,
+        email=req.email,
+        hashed_password=hash_password(req.password),
+        membership_date=date.today(),
+        role="user"  # Self-registration always creates regular users
+    )
+    db.add(new_member)
+    db.commit()
+    db.refresh(new_member)
+
+    access_token = create_access_token(data={"sub": new_member.email})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": new_member.role,
+        "name": new_member.name,
+        "email": new_member.email,
+    }
+
+
+@app.get("/api/auth/me", tags=["Authentication"])
+async def get_current_user_profile(current_member: models.Member = Depends(get_current_member)):
+    return {
+        "id": current_member.id,
+        "name": current_member.name,
+        "email": current_member.email,
+        "role": current_member.role or "user",
+        "membership_date": str(current_member.membership_date)
+    }
 
 
 @app.post("/api/auth/change-password", tags=["Authentication"])
@@ -74,7 +137,8 @@ async def change_password(req: schemas.PasswordChangeRequest, current_member: mo
 
 @app.get("/api/books", response_model=list[schemas.BookResponse], tags=["Books"])
 async def list_books(db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
-    return db.query(models.Book).all()
+    """Both Users and Admins can view the catalog."""
+    return db.query(models.Book).order_by(models.Book.id.asc()).all()
 
 
 @app.get("/api/books/{book_id}", response_model=schemas.BookResponse, tags=["Books"])
@@ -85,8 +149,9 @@ async def get_book(book_id: int, db: Session = Depends(get_db), current_member: 
     return book
 
 
-@app.post("/api/books", response_model=schemas.BookResponse, status_code=201, tags=["Books"])
-async def create_book(book: schemas.BookCreate, db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
+@app.post("/api/books", response_model=schemas.BookResponse, status_code=201, tags=["Books - Admin Only"])
+async def create_book(book: schemas.BookCreate, db: Session = Depends(get_db), current_admin: models.Member = Depends(get_current_admin)):
+    """ADMIN ONLY: Add a new book to the catalog."""
     existing_book = db.query(models.Book).filter(models.Book.isbn == book.isbn).first()
     if existing_book:
         raise HTTPException(status_code=400, detail="ISBN already registered")
@@ -104,8 +169,9 @@ async def create_book(book: schemas.BookCreate, db: Session = Depends(get_db), c
     return db_book
 
 
-@app.put("/api/books/{book_id}", response_model=schemas.BookResponse, tags=["Books"])
-async def update_book(book_id: int, book: schemas.BookCreate, db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
+@app.put("/api/books/{book_id}", response_model=schemas.BookResponse, tags=["Books - Admin Only"])
+async def update_book(book_id: int, book: schemas.BookCreate, db: Session = Depends(get_db), current_admin: models.Member = Depends(get_current_admin)):
+    """ADMIN ONLY: Update book details."""
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
     if not db_book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -126,8 +192,9 @@ async def update_book(book_id: int, book: schemas.BookCreate, db: Session = Depe
     return db_book
 
 
-@app.delete("/api/books/{book_id}", tags=["Books"])
-async def delete_book(book_id: int, db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
+@app.delete("/api/books/{book_id}", tags=["Books - Admin Only"])
+async def delete_book(book_id: int, db: Session = Depends(get_db), current_admin: models.Member = Depends(get_current_admin)):
+    """ADMIN ONLY: Delete a book from catalog."""
     db_book = db.query(models.Book).filter(models.Book.id == book_id).first()
     if not db_book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -138,24 +205,27 @@ async def delete_book(book_id: int, db: Session = Depends(get_db), current_membe
 
 
 # ==========================================
-# MEMBER ENDPOINTS
+# MEMBER ENDPOINTS (ADMIN ONLY)
 # ==========================================
 
-@app.get("/api/members", response_model=list[schemas.MemberResponse], tags=["Members"])
-async def list_members(db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
-    return db.query(models.Member).all()
+@app.get("/api/members", response_model=list[schemas.MemberResponse], tags=["Members - Admin Only"])
+async def list_members(db: Session = Depends(get_db), current_admin: models.Member = Depends(get_current_admin)):
+    """ADMIN ONLY: View all registered library members."""
+    return db.query(models.Member).order_by(models.Member.id.asc()).all()
 
 
-@app.get("/api/members/{member_id}", response_model=schemas.MemberResponse, tags=["Members"])
-async def get_member(member_id: int, db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
+@app.get("/api/members/{member_id}", response_model=schemas.MemberResponse, tags=["Members - Admin Only"])
+async def get_member(member_id: int, db: Session = Depends(get_db), current_admin: models.Member = Depends(get_current_admin)):
+    """ADMIN ONLY: Get member details."""
     member = db.query(models.Member).filter(models.Member.id == member_id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
     return member
 
 
-@app.post("/api/members", response_model=schemas.MemberResponse, status_code=201, tags=["Members"])
-async def create_member(member: schemas.MemberCreate, db: Session = Depends(get_db)):
+@app.post("/api/members", response_model=schemas.MemberResponse, status_code=201, tags=["Members - Admin Only"])
+async def create_member(member: schemas.MemberCreate, db: Session = Depends(get_db), current_admin: models.Member = Depends(get_current_admin)):
+    """ADMIN ONLY: Manually register a new member with role selection."""
     existing_member = db.query(models.Member).filter(models.Member.email == member.email).first()
     if existing_member:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -164,7 +234,8 @@ async def create_member(member: schemas.MemberCreate, db: Session = Depends(get_
         name=member.name,
         email=member.email,
         hashed_password=hash_password(member.password),
-        membership_date=member.membership_date
+        membership_date=member.membership_date,
+        role=member.role or "user"
     )
     db.add(db_member)
     db.commit()
@@ -172,29 +243,12 @@ async def create_member(member: schemas.MemberCreate, db: Session = Depends(get_
     return db_member
 
 
-@app.put("/api/members/{member_id}", response_model=schemas.MemberResponse, tags=["Members"])
-async def update_member(member_id: int, member: schemas.MemberCreate, db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
-    db_member = db.query(models.Member).filter(models.Member.id == member_id).first()
-    if not db_member:
-        raise HTTPException(status_code=404, detail="Member not found")
-    
-    if db_member.email != member.email:
-        conflicting_member = db.query(models.Member).filter(models.Member.email == member.email).first()
-        if conflicting_member:
-            raise HTTPException(status_code=400, detail="Email already in use by another member")
+@app.delete("/api/members/{member_id}", tags=["Members - Admin Only"])
+async def delete_member(member_id: int, db: Session = Depends(get_db), current_admin: models.Member = Depends(get_current_admin)):
+    """ADMIN ONLY: Delete a member."""
+    if member_id == current_admin.id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own admin account")
 
-    db_member.name = member.name
-    db_member.email = member.email
-    db_member.hashed_password = hash_password(member.password)
-    db_member.membership_date = member.membership_date
-    
-    db.commit()
-    db.refresh(db_member)
-    return db_member
-
-
-@app.delete("/api/members/{member_id}", tags=["Members"])
-async def delete_member(member_id: int, db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
     db_member = db.query(models.Member).filter(models.Member.id == member_id).first()
     if not db_member:
         raise HTTPException(status_code=404, detail="Member not found")
@@ -208,8 +262,34 @@ async def delete_member(member_id: int, db: Session = Depends(get_db), current_m
 # BORROW & RETURN ENDPOINTS
 # ==========================================
 
+@app.get("/api/my-borrows", tags=["Transactions - User & Admin"])
+async def get_my_borrow_records(db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
+    """Get the active and past loans of the currently logged-in user."""
+    records = db.query(models.BorrowRecord).filter(
+        models.BorrowRecord.member_id == current_member.id
+    ).order_by(models.BorrowRecord.id.desc()).all()
+    
+    output = []
+    for r in records:
+        output.append({
+            "id": r.id,
+            "book_id": r.book_id,
+            "book_title": r.book.title if r.book else "Unknown Book",
+            "book_author": r.book.author if r.book else "Unknown",
+            "borrow_date": str(r.borrow_date),
+            "return_date": str(r.return_date) if r.return_date else None,
+            "is_returned": r.return_date is not None
+        })
+    return output
+
+
 @app.post("/api/borrow", response_model=schemas.BorrowRecordResponse, status_code=201, tags=["Transactions"])
 async def borrow_book(req: schemas.BorrowRequest, db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
+    # If user is not admin, they can only borrow for themselves
+    target_member_id = current_member.id
+    if current_member.role == "admin" and req.member_id:
+        target_member_id = req.member_id
+
     # 1. Verify book exists and is available
     book = db.query(models.Book).filter(models.Book.id == req.book_id).first()
     if not book:
@@ -217,15 +297,19 @@ async def borrow_book(req: schemas.BorrowRequest, db: Session = Depends(get_db),
     if book.copies_available <= 0:
         raise HTTPException(status_code=400, detail="No copies of this book are currently available")
 
-    # 2. Verify member exists
-    member = db.query(models.Member).filter(models.Member.id == req.member_id).first()
-    if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+    # 2. Check if user already has an active borrow for this book
+    active = db.query(models.BorrowRecord).filter(
+        models.BorrowRecord.book_id == req.book_id,
+        models.BorrowRecord.member_id == target_member_id,
+        models.BorrowRecord.return_date == None
+    ).first()
+    if active:
+        raise HTTPException(status_code=400, detail="You currently have an active borrowed copy of this book")
 
-    # 3. Create borrowing transaction
+    # 3. Create borrow record
     borrow_record = models.BorrowRecord(
         book_id=req.book_id,
-        member_id=req.member_id,
+        member_id=target_member_id,
         borrow_date=date.today()
     )
     
@@ -238,18 +322,19 @@ async def borrow_book(req: schemas.BorrowRequest, db: Session = Depends(get_db),
     return borrow_record
 
 
-@app.post("/api/return/{record_id}", response_model=schemas.BorrowRecordResponse, tags=["Transactions"])
+@app.post("/api/return/{record_id}", tags=["Transactions"])
 async def return_book(record_id: int, db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
-    # 1. Verify borrow record exists
     record = db.query(models.BorrowRecord).filter(models.BorrowRecord.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Borrow record not found")
     
-    # 2. Verify book has not already been returned
+    # Regular users can only return their own books
+    if current_member.role != "admin" and record.member_id != current_member.id:
+        raise HTTPException(status_code=403, detail="You can only return your own borrowed books")
+
     if record.return_date is not None:
         raise HTTPException(status_code=400, detail="Book has already been returned")
 
-    # 3. Mark return date and restore book copy
     record.return_date = date.today()
     book = db.query(models.Book).filter(models.Book.id == record.book_id).first()
     if book:
@@ -257,25 +342,39 @@ async def return_book(record_id: int, db: Session = Depends(get_db), current_mem
 
     db.commit()
     db.refresh(record)
-    return record
+    return {"message": "Book returned successfully", "record_id": record.id}
 
 
-@app.get("/api/borrows", response_model=list[schemas.BorrowRecordResponse], tags=["Transactions"])
-async def list_borrows(db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
-    return db.query(models.BorrowRecord).order_by(models.BorrowRecord.id.desc()).all()
+@app.get("/api/borrows", tags=["Transactions - Admin Only"])
+async def list_all_borrows(db: Session = Depends(get_db), current_admin: models.Member = Depends(get_current_admin)):
+    """ADMIN ONLY: View all borrow transactions across all members."""
+    records = db.query(models.BorrowRecord).order_by(models.BorrowRecord.id.desc()).all()
+    output = []
+    for r in records:
+        output.append({
+            "id": r.id,
+            "book_id": r.book_id,
+            "book_title": r.book.title if r.book else "Unknown",
+            "member_id": r.member_id,
+            "member_name": r.member.name if r.member else "Unknown",
+            "member_email": r.member.email if r.member else "Unknown",
+            "borrow_date": str(r.borrow_date),
+            "return_date": str(r.return_date) if r.return_date else None,
+            "status": "Returned" if r.return_date else "Borrowed"
+        })
+    return output
 
 
 # ==========================================
-# DASHBOARD STATS ENDPOINT
+# DASHBOARD STATS (ADMIN ONLY)
 # ==========================================
 
-@app.get("/api/stats", tags=["Dashboard"])
-async def get_dashboard_stats(db: Session = Depends(get_db), current_member: models.Member = Depends(get_current_member)):
+@app.get("/api/stats", tags=["Dashboard - Admin Only"])
+async def get_dashboard_stats(db: Session = Depends(get_db), current_admin: models.Member = Depends(get_current_admin)):
     total_books = db.query(models.Book).count()
     total_members = db.query(models.Member).count()
     active_borrows = db.query(models.BorrowRecord).filter(models.BorrowRecord.return_date == None).count()
     
-    from sqlalchemy import func
     result = db.query(func.sum(models.Book.copies_available)).scalar()
     total_available_copies = int(result) if result is not None else 0
     
@@ -287,6 +386,24 @@ async def get_dashboard_stats(db: Session = Depends(get_db), current_member: mod
     }
 
 
+# ==========================================
+# FRONTEND PAGES (SEPARATE USER & ADMIN LINKS)
+# ==========================================
+
 @app.get("/")
-def home():
+def user_home():
+    """User Portal: Public / Member book browsing and personal borrowings."""
     return FileResponse("static/index.html")
+
+
+@app.get("/admin")
+def admin_home():
+    """Admin Portal: Full administrative controls & member lists."""
+    return FileResponse("static/admin.html")
+
+
+
+@app.get("/admin")
+def admin_home():
+    """Admin Portal: Full administrative controls & member lists."""
+    return FileResponse("static/admin.html")

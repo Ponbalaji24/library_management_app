@@ -55,3 +55,11 @@ def get_current_member(token: str = Depends(oauth2_scheme), db: Session = Depend
     if member is None:
         raise credentials_exception
     return member
+
+def get_current_admin(current_member: models.Member = Depends(get_current_member)) -> models.Member:
+    if getattr(current_member, "role", "user") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Administrator privileges required",
+        )
+    return current_member

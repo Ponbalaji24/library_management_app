@@ -1,10 +1,5 @@
-# fly.toml app configuration file generated for library-management-app on 2026-11-02T18:44:57Z
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
-app = 'library-management-app'
-primary_region = 'iad'
+app = 'library-management-api'
+primary_region = 'sin'
 
 [build]
 
@@ -13,11 +8,10 @@ primary_region = 'iad'
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
 
 [[vm]]
-  memory = '1gb'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 256
