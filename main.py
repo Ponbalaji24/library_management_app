@@ -25,11 +25,18 @@ async def lifespan(app: FastAPI):
     # 1. Create database tables automatically
     models.Base.metadata.create_all(bind=engine)
     
-    # 2. Add 'role' column if not exists (safe PostgreSQL migration)
+    # 2. Add 'role' column if not exists (safe SQLite & PostgreSQL migration)
     try:
         with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE members ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user';"))
-            conn.commit()
+            if engine.dialect.name == "sqlite":
+                result = conn.execute(text("PRAGMA table_info(members)"))
+                columns = [row[1] for row in result.fetchall()]
+                if "role" not in columns:
+                    conn.execute(text("ALTER TABLE members ADD COLUMN role VARCHAR(50) DEFAULT 'user'"))
+                    conn.commit()
+            else:
+                conn.execute(text("ALTER TABLE members ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user';"))
+                conn.commit()
     except Exception as e:
         print(f"[INFO] Column migration notice: {e}")
 
@@ -37,6 +44,8 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         seed_database(db)
+    except Exception as e:
+        print(f"[ERROR] Seeding notice: {e}")
     finally:
         db.close()
     yield
@@ -394,13 +403,6 @@ async def get_dashboard_stats(db: Session = Depends(get_db), current_admin: mode
 def user_home():
     """User Portal: Public / Member book browsing and personal borrowings."""
     return FileResponse("static/index.html")
-
-
-@app.get("/admin")
-def admin_home():
-    """Admin Portal: Full administrative controls & member lists."""
-    return FileResponse("static/admin.html")
-
 
 
 @app.get("/admin")
