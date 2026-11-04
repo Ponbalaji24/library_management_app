@@ -38,6 +38,33 @@
             background: rgba(255, 255, 255, 0.16);
             color: #fff;
         }
+        /* Password field wrapper with show/hide toggle */
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-wrapper input {
+            width: 100%;
+            padding-right: 44px !important;
+        }
+        .toggle-password-btn {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #94a3b8;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: color 0.2s;
+        }
+        .toggle-password-btn:hover {
+            color: #e2e8f0;
+        }
     </style>
 </head>
 <body>
@@ -284,7 +311,12 @@
                         <div class="form-row">
                             <div class="form-group col-4">
                                 <label for="member-password">Password</label>
-                                <input type="password" id="member-password" required placeholder="Initial Password">
+                                <div class="password-wrapper">
+                                    <input type="password" id="member-password" required placeholder="Initial Password">
+                                    <button type="button" class="toggle-password-btn" id="toggle-member-password" title="Show password">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    </button>
+                                </div>
                             </div>
                             <div class="form-group col-4">
                                 <label for="member-role">Role</label>
@@ -364,7 +396,12 @@
                 </div>
                 <div class="form-group">
                     <label for="admin-password">Password</label>
-                    <input type="password" id="admin-password" required placeholder="••••••••">
+                    <div class="password-wrapper">
+                        <input type="password" id="admin-password" required placeholder="••••••••">
+                        <button type="button" class="toggle-password-btn" id="toggle-admin-password" title="Show password">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary btn-full" style="background: linear-gradient(135deg, #ef4444, #dc2626);">Sign In as Admin</button>
                 <p class="auth-toggle-text" style="margin-top: 14px;">
@@ -387,11 +424,21 @@
                 </div>
                 <div class="form-group">
                     <label for="reg-admin-password">Create Password</label>
-                    <input type="password" id="reg-admin-password" required placeholder="••••••••">
+                    <div class="password-wrapper">
+                        <input type="password" id="reg-admin-password" required placeholder="••••••••">
+                        <button type="button" class="toggle-password-btn" id="toggle-reg-admin-password" title="Show password">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="reg-admin-secret">Admin Secret Passcode</label>
-                    <input type="password" id="reg-admin-secret" required placeholder="Enter Secret (Default: ADMIN2026)">
+                    <div class="password-wrapper">
+                        <input type="password" id="reg-admin-secret" required placeholder="Enter Secret (Default: ADMIN2026)">
+                        <button type="button" class="toggle-password-btn" id="toggle-reg-admin-secret" title="Show password">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
                     <small style="color: #94a3b8; font-size: 11px; display: block; margin-top: 4px;">Default setup key: <strong>ADMIN2026</strong></small>
                 </div>
                 <button type="submit" class="btn btn-primary btn-full" style="background: linear-gradient(135deg, #ef4444, #dc2626);">Register Admin Account</button>
