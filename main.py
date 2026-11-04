@@ -3,7 +3,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
@@ -436,13 +436,19 @@ async def get_dashboard_stats(db: Session = Depends(get_db), current_admin: mode
 # FRONTEND PAGES (SEPARATE USER & ADMIN LINKS)
 # ==========================================
 
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0"
+}
+
 @app.get("/")
 def user_home():
     """User Portal: Public / Member book browsing and personal borrowings."""
-    return FileResponse("static/index.html")
+    return FileResponse("static/index.html", headers=NO_CACHE_HEADERS)
 
 
 @app.get("/admin")
 def admin_home():
     """Admin Portal: Full administrative controls & member lists."""
-    return FileResponse("static/admin.html")
+    return FileResponse("static/admin.html", headers=NO_CACHE_HEADERS)
