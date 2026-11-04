@@ -356,6 +356,7 @@
                 <p id="auth-subtitle">Restricted to Administrators only</p>
             </div>
             
+            <!-- Admin Sign In Form -->
             <form id="admin-login-form">
                 <div class="form-group">
                     <label for="admin-email">Admin Email Address</label>
@@ -366,8 +367,36 @@
                     <input type="password" id="admin-password" required placeholder="••••••••">
                 </div>
                 <button type="submit" class="btn btn-primary btn-full" style="background: linear-gradient(135deg, #ef4444, #dc2626);">Sign In as Admin</button>
-                <p class="auth-toggle-text" style="margin-top: 16px;">
-                    Not an administrator? <a href="/" style="color: #60a5fa;">Go to Public User Portal</a>
+                <p class="auth-toggle-text" style="margin-top: 14px;">
+                    Need your own Admin account? <a href="#" id="show-admin-register-btn" style="color: #60a5fa; font-weight: 600;">Register as Admin</a>
+                </p>
+                <p class="auth-toggle-text" style="margin-top: 6px;">
+                    Not an administrator? <a href="/" style="color: #94a3b8;">Go to Public User Portal</a>
+                </p>
+            </form>
+
+            <!-- Admin Registration Form -->
+            <form id="admin-register-form" class="hidden">
+                <div class="form-group">
+                    <label for="reg-admin-name">Full Name</label>
+                    <input type="text" id="reg-admin-name" required placeholder="Your Full Name">
+                </div>
+                <div class="form-group">
+                    <label for="reg-admin-email">Your Email Address</label>
+                    <input type="email" id="reg-admin-email" required placeholder="your.name@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="reg-admin-password">Create Password</label>
+                    <input type="password" id="reg-admin-password" required placeholder="••••••••">
+                </div>
+                <div class="form-group">
+                    <label for="reg-admin-secret">Admin Secret Passcode</label>
+                    <input type="password" id="reg-admin-secret" required placeholder="Enter Secret (Default: ADMIN2026)">
+                    <small style="color: #94a3b8; font-size: 11px; display: block; margin-top: 4px;">Default setup key: <strong>ADMIN2026</strong></small>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full" style="background: linear-gradient(135deg, #ef4444, #dc2626);">Register Admin Account</button>
+                <p class="auth-toggle-text" style="margin-top: 14px;">
+                    Already have an admin account? <a href="#" id="show-admin-login-btn" style="color: #60a5fa; font-weight: 600;">Sign in here</a>
                 </p>
             </form>
         </div>

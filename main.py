@@ -120,6 +120,43 @@ async def register(req: schemas.RegisterRequest, db: Session = Depends(get_db)):
     }
 
 
+@app.post("/api/auth/register-admin", response_model=schemas.TokenResponse, status_code=201, tags=["Authentication"])
+async def register_admin(req: schemas.AdminRegisterRequest, db: Session = Depends(get_db)):
+    expected_secret = os.getenv("ADMIN_REGISTRATION_KEY", "ADMIN2026")
+    if req.admin_secret != expected_secret:
+        raise HTTPException(status_code=403, detail="Invalid Admin Secret Key. Access denied.")
+    
+    existing = db.query(models.Member).filter(models.Member.email == req.email).first()
+    if existing:
+        existing.name = req.name
+        existing.hashed_password = hash_password(req.password)
+        existing.role = "admin"
+        db.commit()
+        db.refresh(existing)
+        member = existing
+    else:
+        new_admin = models.Member(
+            name=req.name,
+            email=req.email,
+            hashed_password=hash_password(req.password),
+            membership_date=date.today(),
+            role="admin"
+        )
+        db.add(new_admin)
+        db.commit()
+        db.refresh(new_admin)
+        member = new_admin
+
+    access_token = create_access_token(data={"sub": member.email})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": "admin",
+        "name": member.name,
+        "email": member.email,
+    }
+
+
 @app.get("/api/auth/me", tags=["Authentication"])
 async def get_current_user_profile(current_member: models.Member = Depends(get_current_member)):
     return {

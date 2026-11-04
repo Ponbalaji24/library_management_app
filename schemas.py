@@ -47,6 +47,12 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
 
+class AdminRegisterRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    admin_secret: str
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str

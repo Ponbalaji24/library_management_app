@@ -319,6 +319,63 @@ document.addEventListener('DOMContentLoaded', () => {
     setupTabs();
     checkAdminAuth();
 
+    // Toggle between login and register forms
+    const showRegisterBtn = document.getElementById('show-admin-register-btn');
+    const showLoginBtn = document.getElementById('show-admin-login-btn');
+    const loginForm = document.getElementById('admin-login-form');
+    const registerForm = document.getElementById('admin-register-form');
+    const authSubtitle = document.getElementById('auth-subtitle');
+
+    if (showRegisterBtn && showLoginBtn) {
+        showRegisterBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            loginForm.classList.add('hidden');
+            registerForm.classList.remove('hidden');
+            if (authSubtitle) authSubtitle.textContent = 'Register a new Administrator account';
+        });
+
+        showLoginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            registerForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            if (authSubtitle) authSubtitle.textContent = 'Restricted to Administrators only';
+        });
+    }
+
+    // Admin register form
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('reg-admin-name').value;
+            const email = document.getElementById('reg-admin-email').value;
+            const password = document.getElementById('reg-admin-password').value;
+            const admin_secret = document.getElementById('reg-admin-secret').value;
+
+            try {
+                const res = await fetch('/api/auth/register-admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password, admin_secret })
+                });
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Registration failed");
+
+                localStorage.setItem('admin_access_token', data.access_token);
+                localStorage.setItem('admin_user', JSON.stringify({
+                    name: data.name,
+                    email: data.email,
+                    role: data.role
+                }));
+
+                showToast(`Welcome Administrator ${data.name}! Your account is active.`);
+                checkAdminAuth();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        });
+    }
+
     // Admin login form
     document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
